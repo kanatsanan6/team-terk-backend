@@ -1,4 +1,4 @@
-package controllers
+package api
 
 import (
 	"database/sql"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kanatsanan6/go-test/db"
+
 	dbConn "github.com/kanatsanan6/go-test/db/sqlc"
 	"github.com/kanatsanan6/go-test/utils"
 )
@@ -34,10 +34,10 @@ func signUpResponse(user dbConn.User) userResponse {
 	}
 }
 
-func SignUp(ctx *gin.Context) {
+func (server *Server) SignUp(ctx *gin.Context) {
 	var req signUpRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		ctx.JSON(http.StatusBadRequest, validationErrorsResponse(err))
 		return
 	}
 
@@ -53,8 +53,7 @@ func SignUp(ctx *gin.Context) {
 		EncryptedPassword: hashPassword,
 	}
 
-	queries := dbConn.New(db.DB)
-	insertedUser, err := queries.CreateUser(ctx, args)
+	insertedUser, err := server.queries.CreateUser(ctx, args)
 	if err != nil {
 		ctx.JSON(http.StatusUnprocessableEntity, err)
 		return
@@ -82,38 +81,38 @@ func signInResponse(token string, expiresAt int64) tokenResponse {
 	}
 }
 
-func SignIn(ctx *gin.Context) {
+func (server *Server) SignIn(ctx *gin.Context) {
 	var req SignInRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		ctx.JSON(http.StatusBadRequest, validationErrorsResponse(err))
+		return
 	}
 
-	queries := dbConn.New(db.DB)
-	user, err := queries.GetUserByEmail(ctx, req.Email)
+	user, err := server.queries.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, gin.H{"errors": err.Error()})
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
 	err = utils.ValidatePassword([]byte(req.Password), user.EncryptedPassword)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"errors": err.Error()})
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
 
 	jwtToken, jwtPayload, err := utils.GenerateJwtToken(user.Email)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
 	response := signInResponse(jwtToken, jwtPayload.ExpiresAt)
 
-	ctx.JSON(http.StatusOK, response)
+	ctx.JSON(http.StatusOK, dataResponse(response))
 }
 
 type MeResponse struct {
@@ -122,17 +121,16 @@ type MeResponse struct {
 	Email     string `json:"email"`
 }
 
-func Me(ctx *gin.Context) {
+func (server *Server) Me(ctx *gin.Context) {
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*utils.CustomClaims)
 
-	queries := dbConn.New(db.DB)
-	user, err := queries.GetUserByEmail(ctx, authPayload.Email)
+	user, err := server.queries.GetUserByEmail(ctx, authPayload.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, gin.H{"errors": err.Error()})
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
@@ -141,5 +139,5 @@ func Me(ctx *gin.Context) {
 		LastName:  user.LastName,
 		Email:     user.Email,
 	}
-	ctx.JSON(http.StatusOK, gin.H{"data": response})
+	ctx.JSON(http.StatusOK, dataResponse(response))
 }
