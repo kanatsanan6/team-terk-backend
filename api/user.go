@@ -37,7 +37,7 @@ func signUpResponse(user dbConn.User) userResponse {
 func (server *Server) SignUp(ctx *gin.Context) {
 	var req signUpRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, validationErrorsResponse(err))
+		ctx.JSON(http.StatusBadRequest, utils.ValidationErrorsResponse(err))
 		return
 	}
 
@@ -84,35 +84,35 @@ func signInResponse(token string, expiresAt int64) tokenResponse {
 func (server *Server) SignIn(ctx *gin.Context) {
 	var req SignInRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, validationErrorsResponse(err))
+		ctx.JSON(http.StatusBadRequest, utils.ValidationErrorsResponse(err))
 		return
 	}
 
 	user, err := server.queries.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			ctx.JSON(http.StatusNotFound, utils.ErrorResponse(err))
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse(err))
 		return
 	}
 
 	err = utils.ValidatePassword([]byte(req.Password), user.EncryptedPassword)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		ctx.JSON(http.StatusUnauthorized, utils.ErrorResponse(err))
 		return
 	}
 
 	jwtToken, jwtPayload, err := utils.GenerateJwtToken(user.Email)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse(err))
 		return
 	}
 
 	response := signInResponse(jwtToken, jwtPayload.ExpiresAt)
 
-	ctx.JSON(http.StatusOK, dataResponse(response))
+	ctx.JSON(http.StatusOK, utils.DataResponse(response))
 }
 
 type MeResponse struct {
@@ -127,10 +127,10 @@ func (server *Server) Me(ctx *gin.Context) {
 	user, err := server.queries.GetUserByEmail(ctx, authPayload.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			ctx.JSON(http.StatusNotFound, utils.ErrorResponse(err))
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse(err))
 		return
 	}
 
@@ -139,5 +139,5 @@ func (server *Server) Me(ctx *gin.Context) {
 		LastName:  user.LastName,
 		Email:     user.Email,
 	}
-	ctx.JSON(http.StatusOK, dataResponse(response))
+	ctx.JSON(http.StatusOK, utils.DataResponse(response))
 }

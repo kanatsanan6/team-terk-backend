@@ -1,14 +1,10 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/kanatsanan6/go-test/db"
 	dbConn "github.com/kanatsanan6/go-test/db/sqlc"
-	"github.com/kanatsanan6/go-test/utils"
 )
 
 type Server struct {
@@ -90,26 +86,4 @@ func (server *Server) setupCors() {
 
 func (server *Server) Start() {
 	server.router.Run()
-}
-
-func dataResponse(response interface{}) gin.H {
-	return gin.H{"data": response}
-}
-
-func errorResponse(err error) gin.H {
-	return gin.H{"errors": err.Error()}
-}
-
-func validationErrorsResponse(err error) gin.H {
-	var errors []map[string]string
-	for _, err := range err.(validator.ValidationErrors) {
-		field := utils.ToSnakeCase(err.Field())
-		errorField := map[string]string{
-			"field":   field,
-			"message": fmt.Sprintf("%s is invalid with %s tag", field, err.Tag()),
-		}
-		errors = append(errors, errorField)
-	}
-
-	return gin.H{"errors": errors}
 }
