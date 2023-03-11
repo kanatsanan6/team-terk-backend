@@ -3,7 +3,6 @@ package api
 import (
 	"database/sql"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,22 +17,6 @@ type signUpRequest struct {
 	Password  string `json:"password" binding:"required,min=1"`
 }
 
-type userResponse struct {
-	FirstName string    `json:"first_name"`
-	LastName  string    `json:"last_name"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func signUpResponse(user dbConn.User) userResponse {
-	return userResponse{
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt,
-	}
-}
-
 func (server *Server) SignUp(ctx *gin.Context) {
 	var req signUpRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -41,27 +24,17 @@ func (server *Server) SignUp(ctx *gin.Context) {
 		return
 	}
 
-	hashPassword, err := utils.GeneratePassword([]byte(req.Password))
+	result, err := server.store.SignUpTx(ctx, dbConn.SignUpTxParams{
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Email:     req.Email,
+		Password:  req.Password,
+	})
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse(err))
 	}
 
-	args := dbConn.CreateUserParams{
-		FirstName:         req.FirstName,
-		LastName:          req.LastName,
-		Email:             req.Email,
-		EncryptedPassword: hashPassword,
-	}
-
-	insertedUser, err := server.queries.CreateUser(ctx, args)
-	if err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, err)
-		return
-	}
-
-	response := signUpResponse(insertedUser)
-
-	ctx.JSON(http.StatusCreated, response)
+	ctx.JSON(http.StatusCreated, result)
 }
 
 type SignInRequest struct {

@@ -10,11 +10,14 @@ import (
 type Server struct {
 	queries *dbConn.Queries
 	router  *gin.Engine
+	store   *dbConn.Store
 }
 
 func NewServer() (*Server, error) {
+	store := dbConn.NewStore(db.DB)
 	server := &Server{
 		queries: dbConn.New((db.DB)),
+		store:   store,
 	}
 
 	server.setupRouter()

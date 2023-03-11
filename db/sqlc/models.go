@@ -5,8 +5,15 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 )
+
+type Company struct {
+	ID        int64
+	Name      sql.NullString
+	CreatedAt time.Time
+}
 
 type User struct {
 	ID                int64
@@ -15,4 +22,5 @@ type User struct {
 	Email             string
 	EncryptedPassword string
 	CreatedAt         time.Time
+	CompanyID         int64
 }
