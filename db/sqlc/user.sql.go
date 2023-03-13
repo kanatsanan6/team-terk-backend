@@ -14,11 +14,12 @@ INSERT INTO users (
   first_name,
   last_name,
   email,
-  encrypted_password
+  encrypted_password,
+  company_id
 ) VALUES (
-  $1, $2, $3, $4
+  $1, $2, $3, $4, $5
 )
-RETURNING id, first_name, last_name, email, encrypted_password, created_at
+RETURNING id, first_name, last_name, email, encrypted_password, created_at, company_id
 `
 
 type CreateUserParams struct {
@@ -26,6 +27,7 @@ type CreateUserParams struct {
 	LastName          string
 	Email             string
 	EncryptedPassword string
+	CompanyID         int64
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -34,6 +36,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.LastName,
 		arg.Email,
 		arg.EncryptedPassword,
+		arg.CompanyID,
 	)
 	var i User
 	err := row.Scan(
@@ -43,12 +46,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.EncryptedPassword,
 		&i.CreatedAt,
+		&i.CompanyID,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, first_name, last_name, email, encrypted_password, created_at FROM users
+SELECT id, first_name, last_name, email, encrypted_password, created_at, company_id FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -62,12 +66,13 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.Email,
 		&i.EncryptedPassword,
 		&i.CreatedAt,
+		&i.CompanyID,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, first_name, last_name, email, encrypted_password, created_at FROM users
+SELECT id, first_name, last_name, email, encrypted_password, created_at, company_id FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -81,6 +86,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.EncryptedPassword,
 		&i.CreatedAt,
+		&i.CompanyID,
 	)
 	return i, err
 }

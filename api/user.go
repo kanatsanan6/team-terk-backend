@@ -3,7 +3,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
-	"time"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,26 +12,12 @@ import (
 )
 
 type signUpRequest struct {
-	FirstName string `json:"first_name" binding:"required,min=1"`
-	LastName  string `json:"last_name" binding:"required,min=1"`
-	Email     string `json:"email" binding:"required,min=1"`
-	Password  string `json:"password" binding:"required,min=1"`
-}
-
-type userResponse struct {
-	FirstName string    `json:"first_name"`
-	LastName  string    `json:"last_name"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func signUpResponse(user dbConn.User) userResponse {
-	return userResponse{
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt,
-	}
+	FirstName            string `json:"first_name" binding:"required,min=1"`
+	LastName             string `json:"last_name" binding:"required,min=1"`
+	CompanyName          string `json:"company_name" binding:"required"`
+	Email                string `json:"email" binding:"required,min=1"`
+	Password             string `json:"password" binding:"required,min=1"`
+	PasswordConfirmation string `json:"password_confirmation" binding:"required"`
 }
 
 func (server *Server) SignUp(ctx *gin.Context) {
@@ -41,27 +27,28 @@ func (server *Server) SignUp(ctx *gin.Context) {
 		return
 	}
 
-	hashPassword, err := utils.GeneratePassword([]byte(req.Password))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
-	}
-
-	args := dbConn.CreateUserParams{
-		FirstName:         req.FirstName,
-		LastName:          req.LastName,
-		Email:             req.Email,
-		EncryptedPassword: hashPassword,
-	}
-
-	insertedUser, err := server.queries.CreateUser(ctx, args)
-	if err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, err)
+	if req.Password != req.PasswordConfirmation {
+		ctx.JSON(http.StatusBadRequest, gin.H{"errors": "Password does not match with confirmation"})
 		return
 	}
 
-	response := signUpResponse(insertedUser)
+	result, err := server.store.SignUpTx(ctx, dbConn.SignUpTxParams{
+		FirstName:   req.FirstName,
+		LastName:    req.LastName,
+		CompanyName: req.CompanyName,
+		Email:       req.Email,
+		Password:    req.Password,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"errors": "duplicated email"})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResponse(err))
+		return
+	}
 
-	ctx.JSON(http.StatusCreated, response)
+	ctx.JSON(http.StatusCreated, result)
 }
 
 type SignInRequest struct {

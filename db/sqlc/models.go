@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+type Company struct {
+	ID        int64
+	Name      string
+	CreatedAt time.Time
+}
+
 type User struct {
 	ID                int64
 	FirstName         string
@@ -15,4 +21,5 @@ type User struct {
 	Email             string
 	EncryptedPassword string
 	CreatedAt         time.Time
+	CompanyID         int64
 }

@@ -10,21 +10,28 @@ import (
 type Server struct {
 	queries *dbConn.Queries
 	router  *gin.Engine
+	store   *dbConn.Store
 }
 
 func NewServer() (*Server, error) {
+	store := dbConn.NewStore(db.DB)
 	server := &Server{
 		queries: dbConn.New((db.DB)),
+		store:   store,
 	}
 
 	server.setupRouter()
-	server.setupCors()
 
 	return server, nil
 }
 
 func (server *Server) setupRouter() {
 	r := gin.Default()
+
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"*"}
+	config.AllowMethods = []string{"*"}
+	r.Use(cors.New(config))
 
 	v1 := r.Group("/api/v1")
 
@@ -74,14 +81,6 @@ func (server *Server) setupRouter() {
 	authRoutes.GET("/me", server.Me)
 
 	server.router = r
-}
-
-func (server *Server) setupCors() {
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE"}
-
-	server.router.Use(cors.New(config))
 }
 
 func (server *Server) Start() {
