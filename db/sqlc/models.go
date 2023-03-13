@@ -5,13 +5,12 @@
 package db
 
 import (
-	"database/sql"
 	"time"
 )
 
 type Company struct {
 	ID        int64
-	Name      sql.NullString
+	Name      string
 	CreatedAt time.Time
 }
 

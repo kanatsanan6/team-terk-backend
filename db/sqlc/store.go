@@ -39,10 +39,11 @@ func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
 }
 
 type SignUpTxParams struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	CompanyName string `json:"company_name"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
 }
 
 type UserResponse struct {
@@ -62,7 +63,7 @@ func (store *Store) SignUpTx(ctx context.Context, args SignUpTxParams) (SignUpTx
 	var result SignUpTxResult
 
 	err := store.execTx(ctx, func(q *Queries) error {
-		company, err := q.CreateCompany(ctx, sql.NullString{})
+		company, err := q.CreateCompany(ctx, args.CompanyName)
 		if err != nil {
 			return err
 		}
